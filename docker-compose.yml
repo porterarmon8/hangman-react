@@ -1,6 +1,36 @@
 services:
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data"
+    user: root
+    ports:
+      - "8000:8000"
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+  api:
+    build: .
+    command: npm run server
+    environment:
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+      CLIENT_ORIGIN: http://localhost:5173
+    ports:
+      - "3001:3001"
+    depends_on:
+      - dynamodb
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 2s
+      retries: 30
   hangman:
     build: .
+    environment:
+      API_PROXY_TARGET: http://api:3001
     ports:
       - "5173:5173"
-    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+volumes:
+  dynamodb-data:
