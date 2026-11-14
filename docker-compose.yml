@@ -2,5 +2,26 @@ services:
   hangman:
     build: .
     ports:
-      - "5173:5173"
-    restart: unless-stopped
+      - "127.0.0.1:5173:5173"
+    environment:
+      PLAYER_API_URL: http://api:3001
+    depends_on:
+      - api
+  api:
+    build: ./server
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+    depends_on:
+      - dynamodb
+  dynamodb:
+    image: amazon/dynamodb-local:2.6.1
+    user: "0:0"
+    working_dir: /home/dynamodblocal
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    volumes:
+      - player-data:/home/dynamodblocal/data
+
+volumes:
+  player-data:
